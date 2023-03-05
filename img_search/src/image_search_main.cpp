@@ -23,6 +23,55 @@
 
 
 //-----------------------------------------------------------------------------
+typedef struct image_tile
+{
+    cv::Mat img;
+    cv::Rect r;
+
+    image_tile(cv::Mat img_, cv::Rect r_) : img(img_), r(r_) {}
+
+} image_tile;
+
+//-----------------------------------------------------------------------------
+void generate_tiles(cv::Mat& src, uint64_t tile_h, uint64_t tile_w, uint64_t overlap_x, uint64_t overlap_y, std::vector<image_tile>& dst)
+{
+    uint64_t row, col;
+    uint64_t t_w, t_h;
+
+    cv::Rect r;
+    cv::Mat img;
+
+    uint64_t img_h = src.rows;
+    uint64_t img_w = src.cols;
+
+    dst.clear();
+
+    row = 0;
+    while (row < img_h)
+    {
+        col = 0;
+        while (col < img_w)
+        {
+            
+            t_w = (col + tile_w >= img_w) ? img_w - col : tile_w;
+            t_h = (row + tile_h >= img_h) ? img_h - row : tile_h;
+
+            r = cv::Rect(col, row, t_w, t_h);
+            img = src(r).clone();
+
+            image_tile tmp(img, r);
+
+            dst.push_back(tmp);
+
+            col += (tile_w - overlap_x);
+        }
+
+        row += (tile_h - overlap_y);
+    }
+
+}   // end of generate_tiles
+
+//-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
     uint32_t idx, jdx;
@@ -101,8 +150,15 @@ int main(int argc, char** argv)
     int threshold_val;
     double energy_value = 0.8;
 
+
+    std::vector<image_tile> it;
+    uint64_t tile_h = 2000, tile_w = 2000;
+    uint64_t overlap_x = 200, overlap_y = 200;
+    generate_tiles(img, tile_h, tile_w, overlap_x, overlap_y, it);
+
+
     cv::Rect test_rect = cv::Rect(2000, 2000, 2000, 2000);
-    cv::Mat test_roi = img(test_rect);
+    cv::Mat test_roi = it[21].img;
 
     img.release();
     //img_threshold1 = test_roi.clone();
@@ -116,7 +172,7 @@ int main(int argc, char** argv)
 
 
     //cv::Rect search_rect = cv::Rect(2065, 2047, 145, 55);
-    cv::Rect search_rect1 = cv::Rect(65, 47, 145, 55);
+    cv::Rect search_rect1(65, 47, 145, 55);
     cv::Rect search_rect2 = cv::Rect(109, 329, 35, 56);
 
     cv::Mat img_roi1 = img_threshold1(search_rect1);
