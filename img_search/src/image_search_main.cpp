@@ -170,7 +170,6 @@ int main(int argc, char** argv)
     //energy_threshold(img, img_threshold1, energy_value, threshold_val, 1);
     //energy_threshold(img, img_threshold2, energy_value, threshold_val, 2);
 
-
     //cv::Rect search_rect = cv::Rect(2065, 2047, 145, 55);
     cv::Rect search_rect1(65, 47, 145, 55);
     cv::Rect search_rect2 = cv::Rect(109, 329, 35, 56);
@@ -184,8 +183,8 @@ int main(int argc, char** argv)
     cv::filter2D(img_threshold1, match_res2, CV_32FC1, img_roi2, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
 
     cv::Mat match_threshold1, match_threshold2;
-    advanced_threshold(match_res1, match_threshold1, 6500.0f, 0.0f, 1.0f);
-    advanced_threshold(match_res2, match_threshold2, 1800.0f, 0.0f, 1.0f);
+    advanced_threshold(match_res1, match_threshold1, 0.82 * search_rect1.area(), 0.0f, 1.0f);
+    advanced_threshold(match_res2, match_threshold2, 0.82 * search_rect2.area(), 0.0f, 1.0f);
 
     bp = 1;
 
