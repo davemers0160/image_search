@@ -188,6 +188,62 @@ int main(int argc, char** argv)
 
     bp = 1;
 
+    uint64_t count = 0;
+    bool match_found = true;
+
+    cv::Point match_point;
+    double max_val;
+    double match_thresh = 0.82 * search_rect2.area();
+    uint64_t x, y, w, h;
+    uint64_t min_x, max_x, min_kx, max_kx;
+    uint64_t min_y, max_y, min_ky, max_ky;
+
+    cv::Rect match_rect(0, 0, search_rect1.width >> 2, search_rect1.height >> 2);
+
+    while (match_found)
+    {
+        cv::minMaxLoc(match_res1, NULL, &max_val, NULL, &match_point);
+
+        if (max_val >= match_thresh)
+        {
+
+            // calculate the bounds of where copying the filter kernel happens
+            //min_x = std::max((int64_t)0, (int64_t)(x)-(blur_cols >> 1));
+            //max_x = std::min((int64_t)N, (int64_t)(x)+(blur_cols >> 1) + 1);
+
+            //min_y = std::max((int64_t)0, (int64_t)(y)-(blur_rows >> 1));
+            //max_y = std::min((int64_t)N, (int64_t)(y)+(blur_rows >> 1) + 1);
+
+
+            min_x = std::max((int64_t)0, (int64_t)(match_point.x - (match_rect.width >> 1)));
+            max_x = std::min((int64_t), (int64_t));
+
+            x = match_point.x - (match_rect.width >> 1);
+            x = x < 0 ? 0 : x;
+
+            y = match_point.y - (match_rect.height >> 1);
+            y = (y < 0) ? 0 : y;
+
+            match_rect.x = x;
+            match_rect.y = y;
+            match_res1(match_rect) = cv::Mat::zeros(match_rect.height, match_rect.width, CV_32FC1);
+
+            // draw the bounding box
+            cv::rectangle(test_roi, match_rect, cv::Scalar(255), 2, cv::LINE_8);
+
+        }
+        else
+        {
+            match_found = false;
+        }
+
+    }
+
+
+    //match_res1(cv::Rect(136, 142, 10, 10)) = cv::Mat::zeros(10, 10, CV_32FC1);
+
+
+
     cv::destroyAllWindows();
 
     //std::cout << "Press Enter to close..." << std::endl;
