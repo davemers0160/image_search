@@ -171,20 +171,22 @@ int main(int argc, char** argv)
     //energy_threshold(img, img_threshold2, energy_value, threshold_val, 2);
 
     //cv::Rect search_rect = cv::Rect(2065, 2047, 145, 55);
-    cv::Rect search_rect1(265, 247, 145, 55);
+    uint64_t cell_w = 145;
+    uint64_t cell_h = 55;
+    cv::Rect search_rect1(265, 247, cell_w, cell_h);
     cv::Rect search_rect2 = cv::Rect(309, 529, 35, 56);
 
-    cv::Mat img_roi1 = img_threshold1(search_rect1);
+    cv::Mat img_roi = img_threshold1(search_rect1);
     cv::Mat img_roi2 = img_threshold1(search_rect2);
 
-    cv::Mat match_res1, match_res2;
+    cv::Mat match_res1, match_res2, img_roi1;
 
-    cv::filter2D(img_threshold1, match_res1, CV_32FC1, img_roi1, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
-    cv::filter2D(img_threshold1, match_res2, CV_32FC1, img_roi2, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
+    //cv::filter2D(img_threshold1, match_res1, CV_32FC1, img_roi1, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
+    //cv::filter2D(img_threshold1, match_res2, CV_32FC1, img_roi2, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
 
-    cv::Mat match_threshold1, match_threshold2;
-    advanced_threshold(match_res1, match_threshold1, 0.82f * search_rect1.area(), 0.0f, 1.0f);
-    advanced_threshold(match_res2, match_threshold2, 0.82f * search_rect2.area(), 0.0f, 1.0f);
+    //cv::Mat match_threshold1, match_threshold2;
+    //advanced_threshold(match_res1, match_threshold1, 0.82f * search_rect1.area(), 0.0f, 1.0f);
+    //advanced_threshold(match_res2, match_threshold2, 0.82f * search_rect2.area(), 0.0f, 1.0f);
 
     bp = 1;
 
@@ -193,62 +195,88 @@ int main(int argc, char** argv)
 
     cv::Point match_point;
     double max_val;
-    double match_thresh = 0.82 * search_rect2.area();
+    double match_thresh = 0.85 * search_rect1.area();
     uint64_t x, y, w, h;
     uint64_t min_x, max_x, min_kx, max_kx;
     uint64_t min_y, max_y, min_ky, max_ky;
 
-    cv::Rect match_rect(0, 0, search_rect1.width >> 2, search_rect1.height >> 2);
+    cv::Rect match_rect(0, 0, cell_w, cell_h);
 
-    while (match_found)
+    cv::Mat clear_mat = cv::Mat::zeros(cell_h>>2, cell_w>>2, CV_32FC1);
+
+
+    for (idx = 0; idx < 4; ++idx)
     {
-        cv::minMaxLoc(match_res1, NULL, &max_val, NULL, &match_point);
+        match_found = true;
 
-        if (max_val >= match_thresh)
+        switch (idx)
         {
+        case 0:
+            img_roi1 = img_roi.clone();
+            break;
 
-            // calculate the bounds of where copying the filter kernel happens
-            //min_x = std::max((int64_t)0, (int64_t)(x)-(blur_cols >> 1));
-            //max_x = std::min((int64_t)N, (int64_t)(x)+(blur_cols >> 1) + 1);
+        case 1:
+            cv::flip(img_roi, img_roi1, 0);
+            break;
 
-            //min_y = std::max((int64_t)0, (int64_t)(y)-(blur_rows >> 1));
-            //max_y = std::min((int64_t)N, (int64_t)(y)+(blur_rows >> 1) + 1);
+        case 2:
+            cv::flip(img_roi, img_roi1, 1);
 
+            break;
 
-            min_x = std::max((int64_t)0, (int64_t)(match_point.x - (match_rect.width >> 1)));
-            max_x = std::min((int64_t), (int64_t));
+        case 3:
+            cv::flip(img_roi, img_roi1, -1);
 
-            x = match_point.x - (match_rect.width >> 1);
-            x = x < 0 ? 0 : x;
-
-            y = match_point.y - (match_rect.height >> 1);
-            y = (y < 0) ? 0 : y;
-
-            match_rect.x = x;
-            match_rect.y = y;
-            match_res1(match_rect) = cv::Mat::zeros(match_rect.height, match_rect.width, CV_32FC1);
-
-            // draw the bounding box
-            cv::rectangle(test_roi, match_rect, cv::Scalar(255), 2, cv::LINE_8);
-
+            break;
         }
-        else
+
+
+        cv::filter2D(img_threshold1, match_res1, CV_32FC1, img_roi1, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
+
+        while (match_found)
         {
-            match_found = false;
+            cv::minMaxLoc(match_res1, NULL, &max_val, NULL, &match_point);
+
+            if (max_val >= match_thresh)
+            {
+
+                // calculate the bounds of where copying the clear window happens
+                min_x = std::max((int64_t)0, (int64_t)(match_point.x - (cell_w >> 1)));
+                max_x = std::min((int64_t)img_threshold1.cols, (int64_t)(match_point.x + (cell_w >> 1)));
+
+                min_y = std::max((int64_t)0, (int64_t)(match_point.y - (cell_h >> 1)));
+                max_y = std::min((int64_t)img_threshold1.rows, (int64_t)(match_point.y + (cell_h >> 1)));
+
+                min_kx = std::max((int64_t)0, (int64_t)(match_point.x - (clear_mat.cols >> 1)));
+                max_kx = std::min((int64_t)img_threshold1.cols, (int64_t)(match_point.x + (clear_mat.cols >> 1)));
+
+                min_ky = std::max((int64_t)0, (int64_t)(match_point.y - (clear_mat.rows >> 1)));
+                max_ky = std::min((int64_t)img_threshold1.rows, (int64_t)(match_point.y + (clear_mat.rows >> 1)));
+
+                clear_mat(cv::Range(0, max_ky - min_ky), cv::Range(0, max_kx - min_kx)).copyTo(match_res1(cv::Range(min_ky, max_ky), cv::Range(min_kx, max_kx)));
+
+                // draw the bounding box
+                match_rect = cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y);
+                cv::rectangle(test_roi, match_rect, cv::Scalar(255), 2, cv::LINE_8);
+
+                cv::imshow(cv_window, test_roi / 255.0);
+                cv::waitKey(20);
+            }
+            else
+            {
+                match_found = false;
+            }
+
         }
 
     }
+    bp = 2;
 
+    std::cout << "Press Enter to close..." << std::endl;
 
-    //match_res1(cv::Rect(136, 142, 10, 10)) = cv::Mat::zeros(10, 10, CV_32FC1);
-
-
+    std::cin.ignore();
 
     cv::destroyAllWindows();
 
-    //std::cout << "Press Enter to close..." << std::endl;
-
-    //std::cin.ignore();
-    
     return 0;
 }
