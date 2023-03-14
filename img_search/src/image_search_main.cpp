@@ -158,7 +158,7 @@ int main(int argc, char** argv)
 
 
     cv::Rect test_rect = cv::Rect(2000, 2000, 2000, 2000);
-    cv::Mat test_roi = it[11].img;
+    cv::Mat test_roi = it[71].img;
 
     img.release();
     //img_threshold1 = test_roi.clone();
@@ -173,7 +173,7 @@ int main(int argc, char** argv)
     //cv::Rect search_rect = cv::Rect(2065, 2047, 145, 55);
     uint64_t cell_w = 145;
     uint64_t cell_h = 55;
-    cv::Rect search_rect1(265, 247, cell_w, cell_h);
+    cv::Rect search_rect1(256, 166, cell_w, cell_h);        // for [11] - x=265, y=247, for [71] x=256, y=167
     cv::Rect search_rect2 = cv::Rect(309, 529, 35, 56);
 
     cv::Mat img_roi = img_threshold1(search_rect1);
@@ -195,7 +195,7 @@ int main(int argc, char** argv)
 
     cv::Point match_point;
     double max_val;
-    double match_thresh = 0.85 * search_rect1.area();
+    double match_thresh = 0.90 * search_rect1.area();
     uint64_t x, y, w, h;
     uint64_t min_x, max_x, min_kx, max_kx;
     uint64_t min_y, max_y, min_ky, max_ky;
@@ -259,8 +259,7 @@ int main(int argc, char** argv)
                 match_rect = cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y);
                 cv::rectangle(test_roi, match_rect, cv::Scalar(255), 2, cv::LINE_8);
 
-                cv::imshow(cv_window, test_roi / 255.0);
-                cv::waitKey(20);
+
             }
             else
             {
@@ -269,6 +268,8 @@ int main(int argc, char** argv)
 
         }
 
+        cv::imshow(cv_window, test_roi / 255.0);
+        cv::waitKey(0);
     }
     bp = 2;
 
