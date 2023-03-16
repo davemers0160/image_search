@@ -23,6 +23,21 @@
 
 
 //-----------------------------------------------------------------------------
+inline double get_distance(cv::Point p1, cv::Point p2)
+{
+    
+    cv::Point2d tmp_p = p1 - p2;
+    double d = tmp_p.ddot(tmp_p);
+    
+    return sqrt(d);
+}
+
+inline double get_distance(cv::Rect r1, cv::Rect r2)
+{
+    return get_distance(r1.tl(), r2.tl());
+}
+
+//-----------------------------------------------------------------------------
 typedef struct image_tile
 {
     cv::Mat img;
