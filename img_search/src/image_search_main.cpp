@@ -41,6 +41,36 @@ inline double get_distance(cv::Rect r1, cv::Rect r2)
     return get_distance(r1.tl(), r2.tl());
 }
 
+//----------------------------------------------------------------------------------
+void prune_detects(
+    std::vector<cv::Rect>& r,
+    const double overlap_threshold = 0.25
+)
+{
+    uint64_t idx, jdx;
+    double rect_intersection, rect_union;
+
+    for (idx = 0; idx < r.size(); ++idx)
+    {
+        for (jdx = r.size() - 1; jdx > idx; --jdx)
+        {
+            //if (r[idx].label == r[jdx].label)
+            //{
+                // inner = r[idx].intersect(r[jdx]).area();
+            rect_intersection = (r[idx] & r[jdx]).area();
+
+            rect_union = r[idx].area() + r[jdx].area() - rect_intersection;
+
+            if (rect_intersection / rect_union >= overlap_threshold)
+            {
+                r.erase(r.begin() + jdx);
+            }
+            //}
+        }
+    }
+
+}       // end of prune_detects
+
 //-----------------------------------------------------------------------------
 void generate_tiles(cv::Mat& src, uint64_t tile_h, uint64_t tile_w, uint64_t overlap_x, uint64_t overlap_y, std::vector<image_tile>& dst)
 {
@@ -136,6 +166,11 @@ int main(int argc, char** argv)
     int threshold_val;
     double energy_value = 0.8;
 
+    cv::Rect test_rect = cv::Rect(2000, 2000, 2000, 2000); 
+
+    // test 
+    std::vector<cv::Rect> m2 = { test_rect, test_rect, test_rect, test_rect };
+    prune_detects(m2);
 
     std::vector<image_tile> it;
     //uint64_t tile_h = 2000, tile_w = 2000;
@@ -155,7 +190,7 @@ int main(int argc, char** argv)
 
     //cv::Rect search_rect2 = cv::Rect(309, 529, 35, 56);
 
-    uint32_t cell_type = 0;
+    uint32_t cell_type = 1;
 
     switch(cell_type)
     {
@@ -184,18 +219,14 @@ int main(int argc, char** argv)
 
     cv::Rect search_rect1(cell_x, cell_y, cell_w, cell_h);        // for [11] - x=265, y=247, for [71] x=256, y=167
 
-
-    advanced_threshold(test_roi, img_threshold1, 110.0f, -1.0f, 1.0f);
+    advanced_threshold(test_roi, img_threshold1, 106.0f, -1.0f, 1.0f);
     cv::Mat SE3_rect = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
     cv::morphologyEx(img_threshold1, img_threshold1, cv::MORPH_CLOSE, SE3_rect);
 
     //energy_threshold(img, img_threshold1, energy_value, threshold_val, 1);
     //energy_threshold(img, img_threshold2, energy_value, threshold_val, 2);
 
-
-
     cv::Mat img_roi = img_threshold1(search_rect1);
-    //cv::Mat img_roi2 = img_threshold1(search_rect2);
 
     cv::Mat match_res1, img_roi1;
 
@@ -213,7 +244,7 @@ int main(int argc, char** argv)
 
     cv::Point match_point;
     double max_val;
-    double match_thresh = 0.90 * search_rect1.area();
+    double match_thresh = 0.92 * search_rect1.area();
     uint64_t x, y, w, h;
     uint64_t min_x, max_x, min_kx, max_kx;
     uint64_t min_y, max_y, min_ky, max_ky;
@@ -222,6 +253,7 @@ int main(int argc, char** argv)
 
     cv::Mat clear_mat = cv::Mat::zeros(cell_h>>2, cell_w>>2, CV_32FC1);
 
+    std::vector<cv::Rect> m;
 
     for (idx = 0; idx < 4; ++idx)
     {
@@ -277,18 +309,28 @@ int main(int argc, char** argv)
                 match_rect = cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y);
                 cv::rectangle(test_roi, match_rect, cv::Scalar(255), 2, cv::LINE_8);
 
+                match_rect += it[10].r.tl();
+
+                m.push_back(match_rect);
 
             }
             else
             {
                 match_found = false;
             }
-
         }
 
+        // TODO: add logic to scrub through detects and filter out existing detects
+        // useful for match templates that are symmetric about an axis
+        std::cout << "size: " << m.size() << std::endl;
+        
         cv::imshow(cv_window, test_roi / 255.0);
         cv::waitKey(0);
     }
+
+    prune_detects(m);
+
+    std::cout << "size: " << m.size() << std::endl;
     bp = 2;
 
     std::cout << "Press Enter to close..." << std::endl;
