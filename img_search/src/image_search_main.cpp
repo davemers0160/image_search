@@ -8,7 +8,7 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <algorithm>
+#include <string>
 #include <iostream>
 #include <atomic>
 #include <vector>
@@ -20,7 +20,11 @@
 #include <opencv2/imgproc.hpp>
 
 #include "ocv_threshold_functions.h"
+#include "get_directory_listing.h"
+#include "file_ops.h"
 
+#include "image_tile.h"
+#include "get_tiled_images.h"
 
 //-----------------------------------------------------------------------------
 inline double get_distance(cv::Point p1, cv::Point p2)
@@ -36,16 +40,6 @@ inline double get_distance(cv::Rect r1, cv::Rect r2)
 {
     return get_distance(r1.tl(), r2.tl());
 }
-
-//-----------------------------------------------------------------------------
-typedef struct image_tile
-{
-    cv::Mat img;
-    cv::Rect r;
-
-    image_tile(cv::Mat img_, cv::Rect r_) : img(img_), r(r_) {}
-
-} image_tile;
 
 //-----------------------------------------------------------------------------
 void generate_tiles(cv::Mat& src, uint64_t tile_h, uint64_t tile_w, uint64_t overlap_x, uint64_t overlap_y, std::vector<image_tile>& dst)
@@ -116,67 +110,80 @@ int main(int argc, char** argv)
 
     cv::Mat img;
 
-    std::string img_filename = std::string(argv[1]);
+    //std::string img_filename = std::string(argv[1]);
+    std::string image_directory = std::string(argv[1]);
+    //image_directory = path_check(image_directory);
 
-/*
-    // load in the library
-#if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+    //std::vector<std::string> img_filter = { "png", "jpg", "tif", "tiff" };
+    //std::vector<std::string> img_listing = get_directory_listing(image_directory, img_filter);
 
-#if defined(_DEBUG)
-    lib_filename = "../../blob_detector/build/Debug/blob_detector.dll";
-#else
-    lib_filename = "../../blob_detector/build/Release/blob_detector.dll";
-#endif
 
-    HINSTANCE blob_detector_lib = LoadLibrary(lib_filename.c_str());
+    //img = cv::imread(image_directory + img_listing[0], cv::ImreadModes::IMREAD_ANYDEPTH | cv::ImreadModes::IMREAD_GRAYSCALE);
+    //img.convertTo(img, CV_32FC1);
 
-    if (blob_detector_lib == NULL)
-    {
-        throw std::runtime_error("error loading library");
-    }
 
-    lib_blob_detector blob_detector = (lib_blob_detector)GetProcAddress(blob_detector_lib, "blob_detector");
-
-#else
-    lib_filename = "../../fusion_lib/build/libms_fuser.so";
-    void* blob_detector_lib = dlopen(lib_filename.c_str(), RTLD_NOW);
-
-    if (blob_detector_lib == NULL)
-    {
-        throw std::runtime_error("error loading blob_detector_lib library");
-    }
-
-    lib_blob_detector blob_detector = (lib_blob_detector)dlsym(blob_detector_lib, "blob_detector");
-
-#endif
-*/
     //std::string pix_size = std::to_string(pow(2, 50));
     //auto r1 = setenv("OPENCV_IO_MAX_IMAGE_PIXELS", pix_size.c_str(), 1);
     //auto r1 = _putenv_s("CV_IO_MAX_IMAGE_PIXELS", pix_size.c_str());
-
-
     //std::cout << cv::CV_IO_MAX_IMAGE_PIXELS << std::endl;
+    
     // read in the image
-    img = cv::imread(img_filename, cv::ImreadModes::IMREAD_ANYDEPTH | cv::ImreadModes::IMREAD_GRAYSCALE);
-    img.convertTo(img, CV_32FC1);
+    //img = cv::imread(img_filename, cv::ImreadModes::IMREAD_ANYDEPTH | cv::ImreadModes::IMREAD_GRAYSCALE);
+    //img.convertTo(img, CV_32FC1);
 
     // threshold image
-    cv::Mat img_threshold1, img_threshold2;
+    cv::Mat img_threshold1;
     int threshold_val;
     double energy_value = 0.8;
 
 
     std::vector<image_tile> it;
-    uint64_t tile_h = 2000, tile_w = 2000;
-    uint64_t overlap_x = 200, overlap_y = 200;
-    generate_tiles(img, tile_h, tile_w, overlap_x, overlap_y, it);
+    //uint64_t tile_h = 2000, tile_w = 2000;
+    //uint64_t overlap_x = 200, overlap_y = 200;
+    //generate_tiles(img, tile_h, tile_w, overlap_x, overlap_y, it);
 
+    load_image_tiles(image_directory, it);
 
-    cv::Rect test_rect = cv::Rect(2000, 2000, 2000, 2000);
-    cv::Mat test_roi = it[71].img;
+    //cv::Rect test_rect = cv::Rect(2000, 2000, 2000, 2000);
+    cv::Mat test_roi = it[10].img;
 
-    img.release();
+    //img.release();
     //img_threshold1 = test_roi.clone();
+
+    //cv::Rect search_rect = cv::Rect(2065, 2047, 145, 55);
+    uint64_t cell_x, cell_y, cell_w, cell_h;
+
+    //cv::Rect search_rect2 = cv::Rect(309, 529, 35, 56);
+
+    uint32_t cell_type = 0;
+
+    switch(cell_type)
+    {
+    case 0:
+        cell_x = 223;
+        cell_y = 64;
+        cell_w = 284;
+        cell_h = 116;
+        break;
+
+    case 1:
+        cell_x = 1297;
+        cell_y = 67;
+        cell_w = 73;
+        cell_h = 116;
+        break;
+
+
+    default:
+        cell_x = 223;
+        cell_y = 64;
+        cell_w = 284;
+        cell_h = 116;
+        break;
+    }
+
+    cv::Rect search_rect1(cell_x, cell_y, cell_w, cell_h);        // for [11] - x=265, y=247, for [71] x=256, y=167
+
 
     advanced_threshold(test_roi, img_threshold1, 110.0f, -1.0f, 1.0f);
     cv::Mat SE3_rect = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
@@ -185,16 +192,12 @@ int main(int argc, char** argv)
     //energy_threshold(img, img_threshold1, energy_value, threshold_val, 1);
     //energy_threshold(img, img_threshold2, energy_value, threshold_val, 2);
 
-    //cv::Rect search_rect = cv::Rect(2065, 2047, 145, 55);
-    uint64_t cell_w = 145;
-    uint64_t cell_h = 55;
-    cv::Rect search_rect1(256, 166, cell_w, cell_h);        // for [11] - x=265, y=247, for [71] x=256, y=167
-    cv::Rect search_rect2 = cv::Rect(309, 529, 35, 56);
+
 
     cv::Mat img_roi = img_threshold1(search_rect1);
-    cv::Mat img_roi2 = img_threshold1(search_rect2);
+    //cv::Mat img_roi2 = img_threshold1(search_rect2);
 
-    cv::Mat match_res1, match_res2, img_roi1;
+    cv::Mat match_res1, img_roi1;
 
     //cv::filter2D(img_threshold1, match_res1, CV_32FC1, img_roi1, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
     //cv::filter2D(img_threshold1, match_res2, CV_32FC1, img_roi2, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
